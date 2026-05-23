@@ -5,5 +5,5 @@ __pycache__/
 .venv
 env/
 venv/
-.streamlit/
-! .streamlit/config.toml
+.streamlit/*
+!.streamlit/config.toml
