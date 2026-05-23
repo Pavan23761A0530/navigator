@@ -7,12 +7,21 @@ st.set_page_config(page_title="Excel Sheet Navigator", layout="wide")
 
 st.title("Excel Sheet Navigator")
 
+# Add some CSS to hide the "Failed to fetch" error if it's a persistent UI glitch, 
+# though the config fix should handle the root cause.
+st.markdown("""
+    <style>
+    .stAlert { margin-top: 1rem; }
+    </style>
+    """, unsafe_allow_html=True)
+
 uploaded_file = st.file_uploader("Choose an Excel file", type="xlsx")
 
 if uploaded_file is not None:
-    # Load the workbook to get sheet names
     try:
-        xl = pd.ExcelFile(uploaded_file)
+        # Use a single loading mechanism
+        file_bytes = uploaded_file.getvalue()
+        xl = pd.ExcelFile(io.BytesIO(file_bytes))
         sheet_names = xl.sheet_names
         
         # Sidebar for sheet selection and search
@@ -21,17 +30,21 @@ if uploaded_file is not None:
         
         filtered_sheets = [s for s in sheet_names if search_term.lower() in s.lower()] if search_term else sheet_names
         
-        selected_sheet = st.sidebar.selectbox("Select a sheet", filtered_sheets)
+        if not filtered_sheets:
+            st.sidebar.warning("No sheets match your search.")
+            selected_sheet = None
+        else:
+            selected_sheet = st.sidebar.selectbox("Select a sheet", filtered_sheets)
         
         if selected_sheet:
             st.header(f"Sheet: {selected_sheet}")
             
-            # Read the selected sheet
-            df = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+            # Read the selected sheet from the bytes buffer
+            df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=selected_sheet)
             
             # Data editing
             st.subheader("Edit Data")
-            edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+            edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True, key="editor")
             
             # Export functionality
             st.subheader("Export")
